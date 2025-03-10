@@ -1,7 +1,7 @@
 <?php
 // user_dashboard.php
 session_start();
-if (!isset($_SESSION['user_email'])) {
+if (!isset($_SESSION['user_email']) || $_SESSION['user_role'] !== 'customer') {
     header("Location: index.php");
     exit;
 }
@@ -19,15 +19,19 @@ if (!isset($_SESSION['user_email'])) {
     </header>
     <nav class="dashboard-menu">
         <ul>
-            <li><a href="user_dashboard.php">Home</a></li>
-            <li><a href="user_appointments.php">Ver Citas</a></li>
-            <!-- Puedes agregar más módulos -->
+            <li><a href="user_dashboard.php"><i class="fas fa-home"></i> Home</a></li>
+            <li><a href="user_appointments.php"><i class="fas fa-calendar-alt"></i> Ver Citas</a></li>
         </ul>
     </nav>
     <main>
-        <p>Aquí podrás gestionar tu perfil y ver tus citas.</p>
-        <a href="logout.php">Cerrar sesión</a>
+        <section>
+            <h2>Inicio</h2>
+            <p>Aquí podrás ver y gestionar tus citas.</p>
+        </section>
     </main>
+    <footer>
+        <a href="logout.php">Cerrar sesión</a>
+    </footer>
     <script src="js/dashboard.js"></script>
 </body>
 </html>

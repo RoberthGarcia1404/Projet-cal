@@ -13,8 +13,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $user = $result->fetch_assoc();
         if (password_verify($password, $user['password'])) {
             $_SESSION['user_email'] = $email;
-            $_SESSION['user_role'] = $user['role']; // Guardamos el rol en la sesión
-            // Redirigir según el rol del usuario
+            $_SESSION['user_role'] = $user['role'];
             if ($user['role'] === 'admin') {
                 header("Location: admin_dashboard.php");
             } else {

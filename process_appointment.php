@@ -9,7 +9,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $phone = $conn->real_escape_string($_POST['phone']);
     $email = $conn->real_escape_string($_POST['email']);
     
-    // En este ejemplo se utiliza user_id = 1 (el admin dueño del calendario)
+    // En este ejemplo, el calendario pertenece al admin con user_id = 1
     $user_id = 1;
     
     $stmt = $conn->prepare("INSERT INTO appointments (user_id, appointment_date, appointment_time, customer_name, customer_phone, customer_email) VALUES (?, ?, ?, ?, ?, ?)");

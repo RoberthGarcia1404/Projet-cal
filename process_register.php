@@ -18,11 +18,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Hashear la contraseña
     $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-    $sql = "INSERT INTO users (name, email, phone, country_code, password) VALUES ('$name', '$email', '$phone', '$country_code', '$hashed_password')";
+    // En este ejemplo, el primer usuario se considerará admin (puedes ajustar según tu lógica)
+    $sql = "INSERT INTO users (name, email, phone, country_code, password, role) VALUES ('$name', '$email', '$phone', '$country_code', '$hashed_password', 'admin')";
     if ($conn->query($sql) === TRUE) {
         $_SESSION['user_email'] = $email;
-        // Redirige al dashboard del usuario
-        header("Location: user_dashboard.php");
+        $_SESSION['user_role'] = 'admin';
+        header("Location: admin_dashboard.php");
         exit;
     } else {
         echo "Error: " . $conn->error;

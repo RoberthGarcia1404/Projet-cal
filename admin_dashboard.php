@@ -7,17 +7,18 @@ if (!isset($_SESSION['user_email']) || $_SESSION['user_role'] !== 'admin') {
 }
 include('db.php');
 
-// Para este ejemplo usamos un user_id fijo; en producción, usa el id del usuario autenticado.
-$user_id = 1;
+$user_id = 1; // En producción, obtener el ID del usuario autenticado
 
-// Procesamiento de actualización de información del negocio
+// Procesar actualización de información del negocio
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_business'])) {
     $business_name = $conn->real_escape_string($_POST['business_name']);
     $facebook = $conn->real_escape_string($_POST['facebook']);
     $instagram = $conn->real_escape_string($_POST['instagram']);
     $twitter = $conn->real_escape_string($_POST['twitter']);
+    $scheduling_min_days = $conn->real_escape_string($_POST['scheduling_min_days']);
+    $scheduling_max_days = $conn->real_escape_string($_POST['scheduling_max_days']);
     
-    // Subida de foto
+    // Manejo de la subida de la foto (si se selecciona)
     $photoPath = '';
     if (isset($_FILES['photo_file']) && $_FILES['photo_file']['error'] == 0) {
         $uploadDir = "uploads/";
@@ -32,13 +33,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_business'])) {
     
     $result = $conn->query("SELECT id FROM business_info WHERE user_id = $user_id LIMIT 1");
     if ($result->num_rows > 0) {
+        $updateQuery = "UPDATE business_info SET business_name='$business_name', facebook='$facebook', instagram='$instagram', twitter='$twitter', scheduling_min_days='$scheduling_min_days', scheduling_max_days='$scheduling_max_days'";
         if ($photoPath != '') {
-            $conn->query("UPDATE business_info SET business_name='$business_name', photo='$photoPath', facebook='$facebook', instagram='$instagram', twitter='$twitter' WHERE user_id=$user_id");
-        } else {
-            $conn->query("UPDATE business_info SET business_name='$business_name', facebook='$facebook', instagram='$instagram', twitter='$twitter' WHERE user_id=$user_id");
+            $updateQuery .= ", photo='$photoPath'";
         }
+        $updateQuery .= " WHERE user_id=$user_id";
+        $conn->query($updateQuery);
     } else {
-        $conn->query("INSERT INTO business_info (user_id, business_name, photo, facebook, instagram, twitter) VALUES ($user_id, '$business_name', '$photoPath', '$facebook', '$instagram', '$twitter')");
+        $conn->query("INSERT INTO business_info (user_id, business_name, photo, facebook, instagram, twitter, scheduling_min_days, scheduling_max_days) VALUES ($user_id, '$business_name', '$photoPath', '$facebook', '$instagram', '$twitter', '$scheduling_min_days', '$scheduling_max_days')");
     }
 }
 
@@ -67,12 +69,15 @@ while ($row = $result->fetch_assoc()) {
     $working[$row['day_of_week']] = $row;
 }
 
-// Obtener citas agendadas ordenadas por fecha y hora
+// Obtener las citas agendadas ordenadas por fecha y hora
 $appointments = [];
 $result = $conn->query("SELECT * FROM appointments WHERE user_id = $user_id ORDER BY appointment_date, appointment_time");
 while ($row = $result->fetch_assoc()) {
     $appointments[] = $row;
 }
+
+// Generar el link del calendario personalizado para este admin
+$calendarLink = "http://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . "/schedule.php?user_id=" . $user_id;
 
 function dayName($dayNum) {
     $names = [1 => "Lunes", 2 => "Martes", 3 => "Miércoles", 4 => "Jueves", 5 => "Viernes", 6 => "Sábado", 7 => "Domingo"];
@@ -82,98 +87,150 @@ function dayName($dayNum) {
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Dashboard Admin - Agendamiento de Citas</title>
-  <link rel="stylesheet" href="css/dashboard.css">
+    <meta charset="UTF-8">
+    <title>Dashboard Admin - Control Panel</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+    <!-- Incluir FontAwesome para los íconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-  <header>
-    <h1>Dashboard Admin</h1>
-    <nav class="dashboard-menu">
-      <ul>
-        <li><a href="admin_dashboard.php">Home</a></li>
-        <li><a href="admin_appointments.php">Admin Citas</a></li>
-        <li><a href="admin_view_appointments.php">Ver Citas</a></li>
-      </ul>
-    </nav>
-  </header>
-  <main>
-    <!-- Aquí se pueden incluir módulos según la opción del menú -->
-    <section>
-      <h2>Configuración del Negocio</h2>
-      <form method="POST" enctype="multipart/form-data">
-        <input type="hidden" name="update_business" value="1">
-        <label>Nombre del negocio:</label>
-        <input type="text" name="business_name" value="<?php echo isset($business['business_name']) ? $business['business_name'] : ''; ?>" required>
-        <label>Subir Foto del Negocio:</label>
-        <input type="file" name="photo_file" accept="image/*">
-        <label>Facebook:</label>
-        <input type="text" name="facebook" value="<?php echo isset($business['facebook']) ? $business['facebook'] : ''; ?>">
-        <label>Instagram:</label>
-        <input type="text" name="instagram" value="<?php echo isset($business['instagram']) ? $business['instagram'] : ''; ?>">
-        <label>Twitter:</label>
-        <input type="text" name="twitter" value="<?php echo isset($business['twitter']) ? $business['twitter'] : ''; ?>">
-        <button type="submit">Actualizar Negocio</button>
-      </form>
-    </section>
-    
-    <section>
-      <h2>Configuración de Horarios</h2>
-      <form method="POST">
-        <input type="hidden" name="update_working" value="1">
-        <table border="1">
-          <tr>
-            <th>Día</th>
-            <th>¿Trabaja?</th>
-            <th>Hora Inicio</th>
-            <th>Hora Fin</th>
-            <th>Duración de Cita (min)</th>
-          </tr>
-          <?php for ($day = 1; $day <= 7; $day++): 
-            $data = isset($working[$day]) ? $working[$day] : ['is_working'=>0, 'start_time'=>'09:00:00', 'end_time'=>'17:00:00', 'appointment_duration'=>60];
-          ?>
-          <tr>
-            <td><?php echo dayName($day); ?></td>
-            <td><input type="checkbox" name="working_<?php echo $day; ?>" <?php echo $data['is_working'] ? 'checked' : ''; ?>></td>
-            <td><input type="time" name="start_time_<?php echo $day; ?>" value="<?php echo substr($data['start_time'], 0, 5); ?>"></td>
-            <td><input type="time" name="end_time_<?php echo $day; ?>" value="<?php echo substr($data['end_time'], 0, 5); ?>"></td>
-            <td><input type="number" name="duration_<?php echo $day; ?>" value="<?php echo $data['appointment_duration']; ?>" min="5"></td>
-          </tr>
-          <?php endfor; ?>
-        </table>
-        <button type="submit">Actualizar Horarios</button>
-      </form>
-    </section>
-    
-    <section>
-      <h2>Citas Programadas</h2>
-      <?php if(count($appointments) > 0): ?>
-        <table border="1">
-          <tr>
-            <th>Fecha</th>
-            <th>Hora</th>
-            <th>Nombre</th>
-            <th>Email</th>
-            <th>Teléfono</th>
-          </tr>
-          <?php foreach($appointments as $appt): ?>
-            <tr>
-              <td><?php echo $appt['appointment_date']; ?></td>
-              <td><?php echo $appt['appointment_time']; ?></td>
-              <td><?php echo $appt['customer_name']; ?></td>
-              <td><?php echo $appt['customer_email']; ?></td>
-              <td><?php echo $appt['customer_phone']; ?></td>
-            </tr>
-          <?php endforeach; ?>
-        </table>
-      <?php else: ?>
-        <p>No hay citas programadas.</p>
-      <?php endif; ?>
-    </section>
-  </main>
-  <footer>
-    <a href="logout.php">Cerrar sesión</a>
-  </footer>
+    <header>
+        <h1>Dashboard Admin</h1>
+        <nav class="dashboard-menu">
+            <ul>
+                <li><a href="#" data-section="home"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="#" data-section="business"><i class="fas fa-building"></i> Configuración del Negocio</a></li>
+                <li><a href="#" data-section="working"><i class="fas fa-clock"></i> Configuración de Horarios</a></li>
+                <li><a href="#" data-section="appointments"><i class="fas fa-calendar-alt"></i> Citas Programadas</a></li>
+                <li><a href="#" data-section="calendar-link"><i class="fas fa-link"></i> Calendario</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        <!-- Sección Home -->
+        <section id="section-home" class="dashboard-section">
+            <h2>Bienvenido, <?php echo htmlspecialchars($_SESSION['user_email']); ?></h2>
+            <p>Aquí puedes gestionar tu negocio y citas.</p>
+        </section>
+        
+        <!-- Sección Configuración del Negocio -->
+        <section id="section-business" class="dashboard-section hidden">
+            <h2>Configuración del Negocio</h2>
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="update_business" value="1">
+                <label>Nombre del negocio:</label>
+                <input type="text" name="business_name" value="<?php echo isset($business['business_name']) ? $business['business_name'] : ''; ?>" required>
+                <label>Subir Foto del Negocio:</label>
+                <input type="file" name="photo_file" accept="image/*">
+                <label>Facebook:</label>
+                <input type="text" name="facebook" value="<?php echo isset($business['facebook']) ? $business['facebook'] : ''; ?>">
+                <label>Instagram:</label>
+                <input type="text" name="instagram" value="<?php echo isset($business['instagram']) ? $business['instagram'] : ''; ?>">
+                <label>Twitter:</label>
+                <input type="text" name="twitter" value="<?php echo isset($business['twitter']) ? $business['twitter'] : ''; ?>">
+                <label>Días mínimos de antelación para reservar:</label>
+                <input type="number" name="scheduling_min_days" value="<?php echo isset($business['scheduling_min_days']) ? $business['scheduling_min_days'] : 1; ?>" min="0" required>
+                <label>Días máximos para reservar:</label>
+                <input type="number" name="scheduling_max_days" value="<?php echo isset($business['scheduling_max_days']) ? $business['scheduling_max_days'] : 30; ?>" min="1" required>
+                <button type="submit" class="btn-primary">Actualizar Negocio</button>
+            </form>
+        </section>
+        
+        <!-- Sección Configuración de Horarios -->
+        <section id="section-working" class="dashboard-section hidden">
+            <h2>Configuración de Horarios</h2>
+            <form method="POST">
+                <input type="hidden" name="update_working" value="1">
+                <table>
+                    <tr>
+                        <th>Día</th>
+                        <th>¿Trabaja?</th>
+                        <th>Hora Inicio</th>
+                        <th>Hora Fin</th>
+                        <th>Duración de Cita (min)</th>
+                    </tr>
+                    <?php for ($day = 1; $day <= 7; $day++): 
+                        $data = isset($working[$day]) ? $working[$day] : ['is_working'=>0, 'start_time'=>'09:00:00', 'end_time'=>'17:00:00', 'appointment_duration'=>60];
+                    ?>
+                    <tr>
+                        <td><?php echo dayName($day); ?></td>
+                        <td><input type="checkbox" name="working_<?php echo $day; ?>" <?php echo $data['is_working'] ? 'checked' : ''; ?>></td>
+                        <td><input type="time" name="start_time_<?php echo $day; ?>" value="<?php echo substr($data['start_time'], 0, 5); ?>"></td>
+                        <td><input type="time" name="end_time_<?php echo $day; ?>" value="<?php echo substr($data['end_time'], 0, 5); ?>"></td>
+                        <td><input type="number" name="duration_<?php echo $day; ?>" value="<?php echo $data['appointment_duration']; ?>" min="5"></td>
+                    </tr>
+                    <?php endfor; ?>
+                </table>
+                <button type="submit" class="btn-primary">Actualizar Horarios</button>
+            </form>
+        </section>
+        
+        <!-- Sección Citas Programadas -->
+        <section id="section-appointments" class="dashboard-section hidden">
+            <h2>Citas Programadas</h2>
+            <?php if(count($appointments) > 0): ?>
+            <table>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Hora</th>
+                    <th>Nombre</th>
+                    <th>Email</th>
+                    <th>Teléfono</th>
+                </tr>
+                <?php foreach($appointments as $appt): ?>
+                <tr>
+                    <td><?php echo $appt['appointment_date']; ?></td>
+                    <td><?php echo $appt['appointment_time']; ?></td>
+                    <td><?php echo $appt['customer_name']; ?></td>
+                    <td><?php echo $appt['customer_email']; ?></td>
+                    <td><?php echo $appt['customer_phone']; ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </table>
+            <?php else: ?>
+            <p>No hay citas programadas.</p>
+            <?php endif; ?>
+        </section>
+        
+        <!-- Sección Link del Calendario -->
+        <section id="section-calendar-link" class="dashboard-section hidden">
+            <h2>Link del Calendario</h2>
+            <p>Comparte este enlace para que tus clientes puedan agendar citas:</p>
+            <input type="text" id="calendar-link-input" value="<?php echo $calendarLink; ?>" readonly>
+            <button id="copy-link-btn" class="btn-primary"><i class="fas fa-copy"></i> Copiar Link</button>
+        </section>
+    </main>
+    <footer>
+        <a href="logout.php">Cerrar sesión</a>
+    </footer>
+    <script src="js/dashboard.js"></script>
+    <script>
+      // Script para la navegación del menú en el dashboard
+      document.addEventListener('DOMContentLoaded', () => {
+        const menuLinks = document.querySelectorAll('.dashboard-menu a');
+        const sections = document.querySelectorAll('.dashboard-section');
+
+        menuLinks.forEach(link => {
+          link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const sectionName = link.getAttribute('data-section');
+            const sectionId = "section-" + sectionName;
+            sections.forEach(sec => {
+              sec.classList.toggle('hidden', sec.id !== sectionId);
+            });
+          });
+        });
+        
+        // Copiar el link del calendario
+        document.getElementById('copy-link-btn').addEventListener('click', () => {
+          const copyText = document.getElementById('calendar-link-input');
+          copyText.select();
+          copyText.setSelectionRange(0, 99999); // Para móviles
+          document.execCommand("copy");
+          alert("Link copiado: " + copyText.value);
+        });
+      });
+    </script>
 </body>
 </html>
 <?php $conn->close(); ?>

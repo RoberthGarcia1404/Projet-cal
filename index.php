@@ -33,7 +33,7 @@
     <div id="register-form" class="form-panel hidden">
       <h2>Crear Cuenta</h2>
       <form action="process_register.php" method="POST" id="registerForm">
-        <!-- Campo para el nombre -->
+        <!-- Campo Nombre -->
         <label for="reg_name">Nombre</label>
         <input type="text" id="reg_name" name="name" placeholder="Ingresa tu nombre" required>
         
@@ -47,7 +47,6 @@
             <option value="+44">+44 (UK)</option>
             <option value="+34">+34 (España)</option>
             <option value="+52">+52 (México)</option>
-            <!-- Más opciones según se requiera -->
           </select>
           <input type="text" id="reg_phone" name="phone" placeholder="Ingresa tu teléfono" required>
         </div>
@@ -62,7 +61,6 @@
       </form>
     </div>
   </div>
-  <!-- Enlaza el JavaScript para login/registro -->
   <script src="js/login.js"></script>
 </body>
 </html>
