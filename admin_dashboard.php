@@ -7,7 +7,19 @@ if (!isset($_SESSION['user_email']) || $_SESSION['user_role'] !== 'admin') {
 }
 include('db.php');
 
-$user_id = 1; // En producción, obtener el ID del usuario autenticado
+// Obtener información del usuario para mostrar en el dashboard
+$user_email = $_SESSION['user_email'];
+$sql = "SELECT * FROM users WHERE email='$user_email' LIMIT 1";
+$result = $conn->query($sql);
+$user = $result->fetch_assoc();
+
+$user_id = $user['id'];
+
+// Función para obtener el nombre del día
+function dayName($dayNum) {
+    $names = [1 => "Lunes", 2 => "Martes", 3 => "Miércoles", 4 => "Jueves", 5 => "Viernes", 6 => "Sábado", 7 => "Domingo"];
+    return $names[$dayNum];
+}
 
 // Procesar actualización de información del negocio
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_business'])) {
@@ -18,7 +30,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_business'])) {
     $scheduling_min_days = $conn->real_escape_string($_POST['scheduling_min_days']);
     $scheduling_max_days = $conn->real_escape_string($_POST['scheduling_max_days']);
     
-    // Manejo de la subida de la foto (si se selecciona)
     $photoPath = '';
     if (isset($_FILES['photo_file']) && $_FILES['photo_file']['error'] == 0) {
         $uploadDir = "uploads/";
@@ -44,7 +55,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_business'])) {
     }
 }
 
-// Procesamiento de actualización de horarios
+// Procesar actualización de horarios
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_working'])) {
     for ($day = 1; $day <= 7; $day++) {
         $is_working = isset($_POST["working_$day"]) ? 1 : 0;
@@ -79,9 +90,21 @@ while ($row = $result->fetch_assoc()) {
 // Generar el link del calendario personalizado para este admin
 $calendarLink = "http://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . "/schedule.php?user_id=" . $user_id;
 
-function dayName($dayNum) {
-    $names = [1 => "Lunes", 2 => "Martes", 3 => "Miércoles", 4 => "Jueves", 5 => "Viernes", 6 => "Sábado", 7 => "Domingo"];
-    return $names[$dayNum];
+// Agrupar citas por fecha
+$groupedAppointments = [];
+foreach ($appointments as $appt) {
+    $date = $appt['appointment_date'];
+    if (!isset($groupedAppointments[$date])) {
+        $groupedAppointments[$date] = [];
+    }
+    $groupedAppointments[$date][] = $appt;
+}
+ksort($groupedAppointments);
+
+// Obtener formato de hora (por GET, default '24')
+$timeFormat = isset($_GET['time_format']) ? $_GET['time_format'] : '24';
+if ($timeFormat !== '12' && $timeFormat !== '24') {
+    $timeFormat = '24';
 }
 ?>
 <!DOCTYPE html>
@@ -90,19 +113,24 @@ function dayName($dayNum) {
     <meta charset="UTF-8">
     <title>Dashboard Admin - Control Panel</title>
     <link rel="stylesheet" href="css/dashboard.css">
-    <!-- Incluir FontAwesome para los íconos -->
+    <!-- Incluir FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <header>
         <h1>Dashboard Admin</h1>
+        <div class="user-info">
+            <p><strong>Nombre:</strong> <?php echo htmlspecialchars($user['name']); ?></p>
+            <p><strong>Correo:</strong> <?php echo htmlspecialchars($user['email']); ?></p>
+            <p><strong>Teléfono:</strong> <?php echo htmlspecialchars($user['phone']); ?></p>
+        </div>
         <nav class="dashboard-menu">
             <ul>
                 <li><a href="#" data-section="home"><i class="fas fa-home"></i> Home</a></li>
                 <li><a href="#" data-section="business"><i class="fas fa-building"></i> Configuración del Negocio</a></li>
                 <li><a href="#" data-section="working"><i class="fas fa-clock"></i> Configuración de Horarios</a></li>
                 <li><a href="#" data-section="appointments"><i class="fas fa-calendar-alt"></i> Citas Programadas</a></li>
-                <li><a href="#" data-section="calendar-link"><i class="fas fa-link"></i> Calendario</a></li>
+
             </ul>
         </nav>
     </header>
@@ -111,6 +139,14 @@ function dayName($dayNum) {
         <section id="section-home" class="dashboard-section">
             <h2>Bienvenido, <?php echo htmlspecialchars($_SESSION['user_email']); ?></h2>
             <p>Aquí puedes gestionar tu negocio y citas.</p>
+        <!-- Sección Link del Calendario -->
+
+            <h2>Link del Calendario</h2>
+            <p>Comparte este enlace para que tus clientes puedan agendar citas:</p>
+            <input type="text" id="calendar-link-input" value="<?php echo $calendarLink; ?>" readonly>
+            <button id="copy-link-btn" class="btn-primary"><i class="fas fa-copy"></i> Copiar Link</button>
+
+
         </section>
         
         <!-- Sección Configuración del Negocio -->
@@ -129,7 +165,7 @@ function dayName($dayNum) {
                 <label>Twitter:</label>
                 <input type="text" name="twitter" value="<?php echo isset($business['twitter']) ? $business['twitter'] : ''; ?>">
                 <label>Días mínimos de antelación para reservar:</label>
-                <input type="number" name="scheduling_min_days" value="<?php echo isset($business['scheduling_min_days']) ? $business['scheduling_min_days'] : 1; ?>" min="0" required>
+                <input type="number" name="scheduling_min_days" value="<?php echo isset($business['scheduling_min_days']) ? $business['scheduling_min_days'] : 0; ?>" min="0" required>
                 <label>Días máximos para reservar:</label>
                 <input type="number" name="scheduling_max_days" value="<?php echo isset($business['scheduling_max_days']) ? $business['scheduling_max_days'] : 30; ?>" min="1" required>
                 <button type="submit" class="btn-primary">Actualizar Negocio</button>
@@ -168,68 +204,98 @@ function dayName($dayNum) {
         <!-- Sección Citas Programadas -->
         <section id="section-appointments" class="dashboard-section hidden">
             <h2>Citas Programadas</h2>
-            <?php if(count($appointments) > 0): ?>
-            <table>
-                <tr>
-                    <th>Fecha</th>
-                    <th>Hora</th>
-                    <th>Nombre</th>
-                    <th>Email</th>
-                    <th>Teléfono</th>
-                </tr>
-                <?php foreach($appointments as $appt): ?>
-                <tr>
-                    <td><?php echo $appt['appointment_date']; ?></td>
-                    <td><?php echo $appt['appointment_time']; ?></td>
-                    <td><?php echo $appt['customer_name']; ?></td>
-                    <td><?php echo $appt['customer_email']; ?></td>
-                    <td><?php echo $appt['customer_phone']; ?></td>
-                </tr>
+            <div class="time-format-buttons">
+                <button class="time-format-btn <?php echo ($timeFormat==='12') ? 'active' : ''; ?>" onclick="window.location.href='admin_dashboard.php?time_format=12'">12h</button>
+                <button class="time-format-btn <?php echo ($timeFormat==='24') ? 'active' : ''; ?>" onclick="window.location.href='admin_dashboard.php?time_format=24'">24h</button>
+            </div>
+            <?php if (!empty($groupedAppointments)): ?>
+                <?php foreach ($groupedAppointments as $date => $appts): 
+                    $formattedDate = date("l, d F Y", strtotime($date));
+                ?>
+                    <h3><?php echo $formattedDate; ?></h3>
+                    <ul>
+                        <?php 
+                        usort($appts, function($a, $b) {
+                            return strtotime($a['appointment_time']) - strtotime($b['appointment_time']);
+                        });
+                        foreach ($appts as $appt): 
+                            $time = strtotime($appt['appointment_time']);
+                            if ($timeFormat === '12') {
+                                $formattedTime = date("g:i A", $time);
+                            } else {
+                                $formattedTime = date("H:i", $time);
+                            }
+                        ?>
+                            <li class="appointment-item">
+                                <span class="appointment-time"><strong><?php echo $formattedTime; ?></strong></span>
+                                <span class="appointment-info">
+                                    <?php echo htmlspecialchars($appt['customer_name']); ?> - 
+                                    <?php echo htmlspecialchars($appt['customer_email']); ?>, 
+                                    <?php echo htmlspecialchars($appt['customer_phone']); ?>
+                                </span>
+                                <div class="action-dropdown">
+                                    <button class="btn-primary action-btn"><i class="fas fa-ellipsis-v"></i></button>
+                                    <div class="action-dropdown-content">
+                                        <a href="process_appointment_action.php?action=complete&id=<?php echo $appt['id']; ?>">Cita Culminada</a>
+                                        <a href="process_appointment_action.php?action=cancel&id=<?php echo $appt['id']; ?>">Cancelar Cita</a>
+                                    </div>
+                                </div>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
                 <?php endforeach; ?>
-            </table>
             <?php else: ?>
-            <p>No hay citas programadas.</p>
+                <p>No hay citas programadas.</p>
             <?php endif; ?>
         </section>
         
-        <!-- Sección Link del Calendario -->
-        <section id="section-calendar-link" class="dashboard-section hidden">
-            <h2>Link del Calendario</h2>
-            <p>Comparte este enlace para que tus clientes puedan agendar citas:</p>
-            <input type="text" id="calendar-link-input" value="<?php echo $calendarLink; ?>" readonly>
-            <button id="copy-link-btn" class="btn-primary"><i class="fas fa-copy"></i> Copiar Link</button>
-        </section>
+
     </main>
     <footer>
         <a href="logout.php">Cerrar sesión</a>
     </footer>
     <script src="js/dashboard.js"></script>
     <script>
-      // Script para la navegación del menú en el dashboard
-      document.addEventListener('DOMContentLoaded', () => {
-        const menuLinks = document.querySelectorAll('.dashboard-menu a');
-        const sections = document.querySelectorAll('.dashboard-section');
+        document.addEventListener('DOMContentLoaded', () => {
+            const menuLinks = document.querySelectorAll('.dashboard-menu a');
+            const sections = document.querySelectorAll('.dashboard-section');
 
-        menuLinks.forEach(link => {
-          link.addEventListener('click', (e) => {
-            e.preventDefault();
-            const sectionName = link.getAttribute('data-section');
-            const sectionId = "section-" + sectionName;
-            sections.forEach(sec => {
-              sec.classList.toggle('hidden', sec.id !== sectionId);
+            menuLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const sectionName = link.getAttribute('data-section');
+                    const sectionId = "section-" + sectionName;
+                    sections.forEach(sec => {
+                        sec.classList.toggle('hidden', sec.id !== sectionId);
+                    });
+                });
             });
-          });
+            
+            // Dropdown para acciones de cita
+            document.querySelectorAll('.action-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    document.querySelectorAll('.action-dropdown').forEach(dd => {
+                        if (dd !== btn.parentElement) {
+                            dd.classList.remove('show');
+                        }
+                    });
+                    btn.parentElement.classList.toggle('show');
+                });
+            });
+            window.addEventListener('click', () => {
+                document.querySelectorAll('.action-dropdown').forEach(dd => dd.classList.remove('show'));
+            });
+            
+            // Copiar el link del calendario
+            document.getElementById('copy-link-btn').addEventListener('click', () => {
+                const copyText = document.getElementById('calendar-link-input');
+                copyText.select();
+                copyText.setSelectionRange(0, 99999);
+                document.execCommand("copy");
+                alert("Link copiado: " + copyText.value);
+            });
         });
-        
-        // Copiar el link del calendario
-        document.getElementById('copy-link-btn').addEventListener('click', () => {
-          const copyText = document.getElementById('calendar-link-input');
-          copyText.select();
-          copyText.setSelectionRange(0, 99999); // Para móviles
-          document.execCommand("copy");
-          alert("Link copiado: " + copyText.value);
-        });
-      });
     </script>
 </body>
 </html>

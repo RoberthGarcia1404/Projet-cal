@@ -36,31 +36,7 @@ $conn->close();
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    /* Estilos para marcar el día de hoy y las fechas disponibles */
-    .calendar-day.today {
-      position: relative;
-      background-color: #D1E7DD !important;
-    }
-    .calendar-day.today::after {
-      content: '';
-      position: absolute;
-      bottom: 3px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 6px;
-      height: 6px;
-      background-color: #000;
-      border-radius: 50%;
-    }
-    .calendar-day.available {
-      background-color: #E2F0FF;
-      cursor: pointer;
-    }
-    .calendar-day.disabled {
-      background-color: #F0F0F0;
-      color: #999;
-      cursor: not-allowed;
-    }
+   
   </style>
 </head>
 <body>

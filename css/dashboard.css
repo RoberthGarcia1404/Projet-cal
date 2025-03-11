@@ -1,93 +1,196 @@
 /* css/dashboard.css */
 
 body {
-    font-family: 'Inter', sans-serif;
-    background-color: #F7F8FC;
-    color: #333;
-    margin: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: #F7F8FC;
+  color: #333;
+  margin: 0;
+  padding: 0;
+}
+
+/* Header */
+header {
+  background-color: #fff;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  text-align: center;
+}
+header h1 {
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+/* Menú de Dashboard */
+.dashboard-menu {
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.dashboard-menu ul {
+  list-style: none;
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  padding: 10px 0;
+}
+.dashboard-menu ul li {
+  margin: 0 10px;
+}
+.dashboard-menu ul li a {
+  text-decoration: none;
+  color: #333;
+  font-weight: 500;
+  padding: 8px 12px;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.dashboard-menu ul li a:hover,
+.dashboard-menu ul li a.active {
+  background-color: #E2F0FF;
+  color: #6366F1;
+}
+
+/* Layout y Secciones */
+main {
+  max-width: 1200px;
+  margin: 20px auto;
+  padding: 0 20px;
+}
+.dashboard-section {
+  margin-bottom: 20px;
+  background: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.dashboard-section.hidden {
+  display: none;
+}
+
+/* Formularios */
+form {
+  display: flex;
+  flex-direction: column;
+}
+form label {
+  margin-top: 10px;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #333;
+}
+form input, form select, form textarea {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 1rem;
+  margin-bottom: 10px;
+}
+
+/* Tablas */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+table, th, td {
+  border: 1px solid #ddd;
+}
+th, td {
+  padding: 10px;
+  text-align: center;
+}
+
+/* Botones */
+.btn-primary {
+  padding: 12px 20px;
+  background-color: #6366F1;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  margin-top: 10px;
+}
+.btn-primary:hover {
+  background-color: #4F46E5;
+}
+
+/* Botones de Formato de Hora */
+.time-format-buttons {
+  margin-bottom: 10px;
+}
+.time-format-btn {
+  padding: 8px 16px;
+  margin-right: 5px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: #eee;
+  transition: background-color 0.3s;
+}
+.time-format-btn.active {
+  background-color: #6366F1;
+  color: #fff;
+}
+
+/* Dropdown para Acciones en Citas */
+.action-dropdown {
+  position: relative;
+  display: inline-block;
+}
+.action-dropdown-content {
+  display: none;
+  position: absolute;
+  right: 0;
+  background-color: #f9f9f9;
+  min-width: 150px;
+  box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
+  z-index: 1;
+  border-radius: 4px;
+}
+.action-dropdown-content a {
+  color: #333;
+  padding: 8px 12px;
+  text-decoration: none;
+  display: block;
+}
+.action-dropdown-content a:hover {
+  background-color: #f1f1f1;
+}
+.action-dropdown.show .action-dropdown-content {
+  display: block;
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 10px;
+  background-color: #fff;
+  box-shadow: 0 -2px 4px rgba(0,0,0,0.05);
+  margin-top: 20px;
+}
+footer a {
+  text-decoration: none;
+  color: #6366F1;
+  font-weight: 500;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+  .dashboard-menu ul {
+      flex-direction: column;
+      align-items: center;
   }
-  
-  header {
-    background-color: #fff;
-    padding: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    text-align: center;
+  .dashboard-menu ul li {
+      margin: 5px 0;
   }
-  
-  header h1 {
-    font-size: 1.8rem;
-    font-weight: 600;
-  }
-  
   main {
-    max-width: 1200px;
-    margin: 20px auto;
-    padding: 0 20px;
+      padding: 0 10px;
   }
-  
-  section {
-    background: #fff;
-    margin-bottom: 20px;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  .dashboard-section {
+      padding: 15px;
   }
-  
-  section h2 {
-    margin-bottom: 10px;
-    font-size: 1.2rem;
-    font-weight: 500;
-  }
-  
-  /* Estilos de formulario en dashboard */
-  form {
-    display: flex;
-    flex-direction: column;
-  }
-  
-  form label {
-    margin-top: 10px;
-    margin-bottom: 5px;
-    font-weight: 500;
-  }
-  
-  form input, form select, form textarea {
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 1rem;
-  }
-  
-  /* Botón primario */
-  .btn-primary {
-    margin-top: 20px;
-    padding: 12px;
-    background: #6366F1;
-    color: #fff;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1rem;
-    transition: background 0.3s;
-  }
-  
-  .btn-primary:hover {
-    background: #4F46E5;
-  }
-  
-  /* Estilos para tablas (por ejemplo, para citas) */
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 15px;
-  }
-  
-  table, th, td {
-    border: 1px solid #ddd;
-  }
-  
-  th, td {
-    padding: 10px;
-    text-align: center;
-  }
-  
+}
